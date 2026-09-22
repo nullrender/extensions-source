@@ -1,0 +1,54 @@
+name: Build extension
+
+on:
+  workflow_dispatch:
+    inputs:
+      module:
+        description: 'Modulo, ex: pt/cerisescans'
+        required: true
+      ref:
+        description: 'Branch a compilar'
+        required: true
+        default: main
+
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Module path
+        id: mod
+        env:
+          MODULE: ${{ inputs.module }}
+        run: echo "path=:src:${MODULE//\//:}" >> "$GITHUB_OUTPUT"
+
+      - name: Spotless
+        run: |
+          chmod +x gradlew
+          ./gradlew ${{ steps.mod.outputs.path }}:spotlessApply
+          git diff --exit-code || echo "::warning::spotlessApply alterou arquivos, aplique o diff acima antes do push"
+
+      - name: Lint
+        run: ./gradlew ${{ steps.mod.outputs.path }}:lintRelease
+
+      - name: Build
+        run: ./gradlew ${{ steps.mod.outputs.path }}:assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk-${{ github.run_number }}
+          path: src/${{ inputs.module }}/build/outputs/apk/debug/*.apk
