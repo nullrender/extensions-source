@@ -40,13 +40,13 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew ${{ steps.mod.outputs.path }}:spotlessApply
-          git diff --exit-code || echo "::warning::spotlessApply alterou arquivos, aplique o diff acima antes do push"
+          git diff --exit-code
 
       - name: Lint
         run: ./gradlew ${{ steps.mod.outputs.path }}:lintRelease
 
       - name: Build
-        run: ./gradlew ${{ steps.mod.outputs.path }}:assembleDebug
+        run: ./gradlew ${{ steps.mod.outputs.path }}:assembleRelease ${{ steps.mod.outputs.path }}:assembleDebug
 
       - uses: actions/upload-artifact@v5
         with:
